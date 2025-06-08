@@ -1,187 +1,289 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@{
-}
-@{
+﻿@{
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1 class="text-center mb-5">Tasks</h1>
-<div class="d-flex justify-content-between mb-3">
-    <h2>Project Tasks</h2>
-     @if (User.IsInRole("Manager") || User.IsInRole("TeamLeader"))
-     {
-    <a class="btn btn-primary" asp-action="Create" asp-route-projectId="@ViewBag.ProjectId">Add Task</a>
-     }
-</div>
-<a href="javascript:void(0)" onclick="toggleChart()" class="btn btn-info">View Task Completion Chart</a>
-
-<div id="chartContainer" style="display: none; margin-top: 20px; width: 100%; height: 400px;">
-    <canvas id="taskCompletionChart" width="400" height="400"></canvas>
-</div>
-<a href="javascript:void(0)" onclick="togglePriorityChart()" class="btn btn-info">View Task Priority Distribution</a>
-<div id="priorityChartContainer" style="display: none; margin-top: 20px; width: 100%; height: 400px;">
-    <canvas id="taskPriorityChart" width="400" height="400"></canvas>
-</div>
-
-<table class="table table-striped table-bordered">
-    <thead class="table-dark">
-        <tr>
-            <th>Title</th>
-            <th>Description</th>
-            <th>Assigned To</th>
-            <th>Status</th>
-            <th>Priority</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var task in Model)
+<div class="container mt-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Project Tasks</h1>
+            <p class="text-muted mb-0">Manage your team's tasks</p>
+        </div>
+        @if (User.IsInRole("Manager") || User.IsInRole("TeamLeader"))
         {
-            <tr>
-                <td>@task.Title</td>
-                <td>@task.Description</td>
-                <td>@(task.AssignedTo != null ? $"{task.AssignedTo.FirstName} {task.AssignedTo.LastName}" : "Unassigned")</td>                <td>
-                    <span class="badge @((task.IsComplete ? "bg-success" : "bg-warning"))">
-                        @(task.IsComplete ? "Complete" : "Incomplete")
-                    </span>
-                </td>
-                <td>
-                    <span class="badge @GetPriorityClass(task.Priority)">
-                        @task.Priority
-                    </span>
-                </td>
-                <td>
-                    <a class="btn btn-secondary btn-sm" asp-action="ToggleComplete" asp-route-id="@task.Id">Toggle Status</a>
-                    <a class="btn btn-warning btn-sm" asp-action="Edit" asp-route-id="@task.Id" asp-route-projectId="@ViewBag.ProjectId">Edit</a>
-                    @if (User.IsInRole("Manager") || User.IsInRole("TeamLeader"))
-                    {
-                        <form method="post" asp-action="Delete" asp-route-id="@task.Id" asp-route-projectId="@ViewBag.ProjectId" style="display:inline;">
-                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this task?')">Delete</button>
-                    </form>}
-                </td>
-            </tr>
+        <a class="btn btn-primary" asp-action="Create" asp-route-projectId="@ViewBag.ProjectId">
+            <i class="bi bi-plus-circle me-1"></i>Add Task
+        </a>
         }
-    </tbody>
-</table>
-@if (TempData["ErrorMessage"] != null)
-{
-    <div class="alert alert-danger">
-        @TempData["ErrorMessage"]
     </div>
-}
+
+    <!-- Dashboard Metrics - Flex Layout -->
+    <div class="row mb-4">
+        <!-- Completion Card -->
+        <div class="col-md-4 mb-3 mb-md-0">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-muted">Completion</span>
+                            <h3 class="mt-1">@ViewBag.CompletedTasks/@ViewBag.TotalTasks</h3>
+                        </div>
+                        <span class="badge bg-success rounded-pill">
+                            @Math.Round((ViewBag.CompletedTasks / (double)ViewBag.TotalTasks) * 100)% Done
+                        </span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="toggleChart()">
+                        <i class="bi bi-pie-chart me-1"></i>View Chart
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Priority Card -->
+        <div class="col-md-4 mb-3 mb-md-0">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div>
+                        <span class="text-muted">Priority Distribution</span>
+                        <div class="d-flex justify-content-between mt-2">
+                            <div>
+                                <span class="badge bg-danger me-1">@ViewBag.HighPriorityTasks High</span>
+                                <span class="badge bg-warning me-1">@ViewBag.MediumPriorityTasks Medium</span>
+                                <span class="badge bg-success">@ViewBag.LowPriorityTasks Low</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary mt-2 w-100" onclick="togglePriorityChart()">
+                        <i class="bi bi-bar-chart me-1"></i>View Chart
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Card -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div>
+                        <span class="text-muted">Status</span>
+                        <div class="d-flex justify-content-between mt-2">
+                            <div>
+                                <span class="badge bg-success me-2">
+                                    <i class="bi bi-check-circle"></i> @ViewBag.CompletedTasks Done
+                                </span>
+                                <span class="badge bg-warning">
+                                    <i class="bi bi-hourglass"></i> @(ViewBag.TotalTasks - ViewBag.CompletedTasks) Left
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress mt-3" style="height: 8px;">
+                        <div class="progress-bar bg-success"
+                             style="width: @Math.Round((ViewBag.CompletedTasks / (double)ViewBag.TotalTasks) * 100)%">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card mb-3 mb-md-0" id="completionChartContainer" style="display: none;">
+                <div class="card-body">
+                    <h5 class="card-title d-flex justify-content-between align-items-center">
+                        <span>Task Completion</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="toggleChart()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </h5>
+                    <canvas id="taskCompletionChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card" id="priorityChartContainer" style="display: none;">
+                <div class="card-body">
+                    <h5 class="card-title d-flex justify-content-between align-items-center">
+                        <span>Priority Distribution</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="togglePriorityChart()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </h5>
+                    <canvas id="taskPriorityChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tasks Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                            <th>Priority</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in Model)
+                        {
+                        <tr>
+                            <td>@task.Title</td>
+                            <td class="text-truncate" style="max-width: 200px;">@task.Description</td>
+                            <td>@(task.AssignedTo != null ? $"{task.AssignedTo.FirstName} {task.AssignedTo.LastName}" : "Unassigned")</td>
+                            <td>
+                                <span class="badge @(task.IsComplete ? "bg-success" : "bg-warning")">
+                                    @(task.IsComplete ? "Complete" : "In Progress")
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge @GetPriorityClass(task.Priority)">
+                                    @task.Priority
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a class="btn btn-outline-secondary" asp-action="ToggleComplete" asp-route-id="@task.Id">
+                                        <i class="bi bi-toggle-on"></i>
+                                    </a>
+                                    <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@task.Id" asp-route-projectId="@ViewBag.ProjectId">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    @if (User.IsInRole("Manager") || User.IsInRole("TeamLeader"))
+                                        {
+                                    <form method="post" asp-action="Delete" asp-route-id="@task.Id" asp-route-projectId="@ViewBag.ProjectId" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Are you sure you want to delete this task?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                        }
+                                </div>
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+    <div class="alert alert-danger mt-3 alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    }
+</div>
+
 @functions {
     private string GetPriorityClass(string priority)
     {
         return priority switch
         {
             "High" => "bg-danger",
-            "Medium" => "bg-warning", 
+            "Medium" => "bg-warning",
             "Low" => "bg-success",
-            _ => "bg-secondary" 
+            _ => "bg-secondary"
         };
     }
 }
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-var chartInitialized = false;
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Initialize charts as hidden
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if ViewBag properties exist before using them
+            if (typeof window.completionChart === 'undefined') {
+                window.completionChart = null;
+            }
+            if (typeof window.priorityChart === 'undefined') {
+                window.priorityChart = null;
+            }
+        });
 
-function toggleChart() {
-    var chartContainer = document.getElementById('chartContainer');
-    if (chartContainer.style.display === 'none') {
-        chartContainer.style.display = 'block';
+        function toggleChart() {
+            const container = document.getElementById('completionChartContainer');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                if (!window.completionChart) {
+                    renderCompletionChart();
+                }
+            } else {
+                container.style.display = 'none';
+            }
+        }
 
-        if (!chartInitialized) {
-            var ctx = document.getElementById('taskCompletionChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'pie',
+        function togglePriorityChart() {
+            const container = document.getElementById('priorityChartContainer');
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                if (!window.priorityChart) {
+                    renderPriorityChart();
+                }
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function renderCompletionChart() {
+            const ctx = document.getElementById('taskCompletionChart').getContext('2d');
+            window.completionChart = new Chart(ctx, {
+                type: 'doughnut',
                 data: {
-                    labels: ['Completed Tasks', 'Remaining Tasks'],
+                    labels: ['Completed', 'Incomplete'],
                     datasets: [{
-                        label: 'Task Completion',
                         data: [
-                            @ViewBag.CompletedTasks,
-                            @ViewBag.TotalTasks - @ViewBag.CompletedTasks
+                            @(ViewBag.CompletedTasks ?? 0),
+                            @((ViewBag.TotalTasks ?? 0) - (ViewBag.CompletedTasks ?? 0))
                         ],
-                        backgroundColor: ['#4caf50', '#f44336'],
-                        hoverOffset: 4
+                        backgroundColor: ['#28a745', '#ffc107'],
+                        borderWidth: 0
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    return tooltipItem.label + ': ' + tooltipItem.raw + ' tasks';
-                                }
-                            }
-                        }
-                    }
-                }
+                
             });
-            chartInitialized = true;
         }
-    } else {
-        chartContainer.style.display = 'none';
-    }
+
+        function renderPriorityChart() {
+            const ctx = document.getElementById('taskPriorityChart').getContext('2d');
+            window.priorityChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['High', 'Medium', 'Low'],
+                    datasets: [{
+                        label: 'Tasks',
+                        data: [
+                            @(ViewBag.HighPriorityTasks ?? 0),
+                            @(ViewBag.MediumPriorityTasks ?? 0),
+                            @(ViewBag.LowPriorityTasks ?? 0)
+                        ],
+                        backgroundColor: [
+                            'rgba(220, 53, 69, 0.7)',
+                            'rgba(255, 193, 7, 0.7)',
+                            'rgba(40, 167, 69, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(220, 53, 69, 1)',
+                            'rgba(255, 193, 7, 1)',
+                            'rgba(40, 167, 69, 1)'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+               
+            });
+        }
+    </script>
 }
-</script>
-<script>
-    var priorityChartInitialized = false;
-
-    function togglePriorityChart() {
-        var priorityChartContainer = document.getElementById('priorityChartContainer');
-        if (priorityChartContainer.style.display === 'none') {
-            priorityChartContainer.style.display = 'block';
-
-            if (!priorityChartInitialized) {
-                var ctx = document.getElementById('taskPriorityChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar', 
-                    data: {
-                        labels: ['High Priority', 'Medium Priority', 'Low Priority'],
-                        datasets: [{
-                            label: 'Task Priorities',
-                            data: [
-                                @ViewBag.HighPriorityTasks,  
-                                @ViewBag.MediumPriorityTasks,  
-                                @ViewBag.LowPriorityTasks 
-                            ],
-                            backgroundColor: ['#ff5252', '#ffb74d', '#4caf50'], 
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                display: false 
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(tooltipItem) {
-                                        return tooltipItem.raw + ' tasks';
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true 
-                            }
-                        }
-                    }
-                });
-                priorityChartInitialized = true;
-            }
-        } else {
-            priorityChartContainer.style.display = 'none';
-        }
-    }
-</script>
