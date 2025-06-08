@@ -1,0 +1,60 @@
+﻿@model TaskManagement.Models.Task
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h1 class="text-center mb-5">Edit Task</h1>
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        Edit Task
+    </div>
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="ProjectId" />
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control"></textarea>
+                <span asp-validation-for="Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DueDate" class="form-label"></label>
+                <input asp-for="DueDate" type="date" class="form-control" />
+                <span asp-validation-for="DueDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label for="Priority">Priority</label>
+                <select asp-for="Priority" class="form-control" asp-items="ViewBag.Priorities">
+                    <option value="">Select Priority</option>
+                </select>
+                <span asp-validation-for="Priority" class="text-danger"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="AssignedToId" class="form-label"></label>
+                <select asp-for="AssignedToId" class="form-select" asp-items="@(new SelectList(ViewBag.Users, "Id", "Name", Model.AssignedToId))" readonly>
+                    <option value="">-- Select User --</option>
+                </select>
+                <span asp-validation-for="AssignedToId" class="text-danger"></span>
+            </div>
+        
+            <div class="mb-3">
+                <label asp-for="IsComplete" class="form-label"></label>
+                <input asp-for="IsComplete" type="checkbox" />
+                <span asp-validation-for="IsComplete" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-success">Save Changes</button>
+            <a asp-action="Index" asp-route-projectId="@ViewBag.ProjectId" class="btn btn-secondary">Cancel</a>
+        </form>
+
+    </div>
+</div>
